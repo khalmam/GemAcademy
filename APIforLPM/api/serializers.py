@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Module, LearningPath, Progress
+from .models import Module, LearningPath
 
 class ModuleSerializer(serializers.ModelSerializer):
     class Meta:
@@ -11,9 +11,4 @@ class LearningPathSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = LearningPath
-        fields = '__all__'
-
-class ProgressSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Progress
-        fields = '__all__'
+        fields = ['id', 'name', 'modules', 'progress']

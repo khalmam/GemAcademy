@@ -1,42 +1,55 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Module, LearningPath, Progress
-from .serializers import ModuleSerializer, LearningPathSerializer, ProgressSerializer
-from django.utils.timezone import now
+from rest_framework import status
+from .models import LearningPath, Module
+from .serializers import LearningPathSerializer
 
-class ModuleViewSet(viewsets.ModelViewSet):
-    queryset = Module.objects.all()
-    serializer_class = ModuleSerializer
+class LearningPathList(APIView):
+    def get(self, request):
+        paths = LearningPath.objects.all()
+        serializer = LearningPathSerializer(paths, many=True)
+        return Response(serializer.data)
 
-class LearningPathViewSet(viewsets.ModelViewSet):
-    queryset = LearningPath.objects.all()
-    serializer_class = LearningPathSerializer
-
-    @action(detail=True, methods=['post'])
-    def add_module(self, request, pk=None):
-        path = self.get_object()
-        module_id = request.data.get('module_id')
+class LearningPathDetail(APIView):
+    def get(self, request, pk):
         try:
+            path = LearningPath.objects.get(pk=pk)
+            serializer = LearningPathSerializer(path)
+            return Response(serializer.data)
+        except LearningPath.DoesNotExist:
+            return Response({"error": "Not found"}, status=404)
+
+class AddModule(APIView):
+    def post(self, request, pk):
+        try:
+            path = LearningPath.objects.get(pk=pk)
+            module_id = request.data.get("module_id")
             module = Module.objects.get(id=module_id)
             path.modules.add(module)
-            return Response({'status': 'module added'})
-        except Module.DoesNotExist:
-            return Response({'error': 'Module not found'}, status=404)
+            path.save()
+            return Response({"message": "Module added."})
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
 
-    @action(detail=True, methods=['delete'], url_path='remove-module/(?P<module_id>[^/.]+)')
-    def remove_module(self, request, pk=None, module_id=None):
-        path = self.get_object()
+class RemoveModule(APIView):
+    def post(self, request, pk):
         try:
+            path = LearningPath.objects.get(pk=pk)
+            module_id = request.data.get("module_id")
             module = Module.objects.get(id=module_id)
             path.modules.remove(module)
-            return Response({'status': 'module removed'})
-        except Module.DoesNotExist:
-            return Response({'error': 'Module not found'}, status=404)
+            path.save()
+            return Response({"message": "Module removed."})
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
 
-class ProgressViewSet(viewsets.ModelViewSet):
-    queryset = Progress.objects.all()
-    serializer_class = ProgressSerializer
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user, completed=True, completed_at=now())
+class TrackProgress(APIView):
+    def post(self, request, pk):
+        try:
+            path = LearningPath.objects.get(pk=pk)
+            progress = request.data.get("progress")
+            path.progress = progress
+            path.save()
+            return Response({"message": "Progress updated."})
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
